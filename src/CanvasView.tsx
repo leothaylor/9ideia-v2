@@ -31,11 +31,32 @@ const EXPORT_WIDTH = 1920;
 const EXPORT_HEIGHT = 1080;
 const EXPORT_EDGE_COLOR = '#66727e';
 const EXPORT_EDGE_WIDTH = '1.6';
+let exportSequence = 0;
 
 function exportFilename(name: string) {
   const slug = name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'teia';
-  const timestamp = new Date().toISOString().slice(0, 19).replace('T', '-').replace(/:/g, '');
-  return `${slug}-${timestamp}.png`;
+  const timestamp = new Date().toISOString().replace('T', '-').replace(/[:.]/g, '').replace('Z', '');
+  exportSequence += 1;
+  return `${slug}-${timestamp}-${exportSequence}.png`;
+}
+
+function exportSignature(nodes: IdeaNode[], edges: Edge[]) {
+  return JSON.stringify({
+    nodes: nodes.map((node) => ({
+      id: node.id,
+      position: node.position,
+      data: node.data,
+    })),
+    edges: edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle,
+      type: edge.type,
+      markerEnd: edge.markerEnd,
+    })),
+  });
 }
 
 interface ExportStyleSnapshot {
@@ -83,6 +104,22 @@ interface Props {
   onChange: (weave: Weave) => void;
 }
 
+interface PreparedPng {
+  signature: string;
+  filename: string;
+  url: string;
+}
+
+function downloadPreparedPng(png: PreparedPng) {
+  const anchor = document.createElement('a');
+  anchor.download = png.filename;
+  anchor.href = png.url;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 function CanvasInner({ weave, onBack, onChange }: Props) {
   const [nodes, setNodes] = useState<IdeaNode[]>(weave.nodes);
   const [edges, setEdges] = useState<Edge[]>(weave.edges);
@@ -90,11 +127,18 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
   const [query, setQuery] = useState('');
   const [saved, setSaved] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [refreshingExport, setRefreshingExport] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [preparedSignature, setPreparedSignature] = useState('');
   const exportingRef = useRef(false);
+  const preparedPngRef = useRef<PreparedPng | null>(null);
+  const exportGenerationRef = useRef(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView, setCenter, getNodesBounds } = useReactFlow<IdeaNode, Edge>();
   const selectedNode = nodes.find((node) => node.selected);
+  const currentExportSignature = useMemo(() => exportSignature(nodes, edges), [nodes, edges]);
+  const currentExportSignatureRef = useRef(currentExportSignature);
+  currentExportSignatureRef.current = currentExportSignature;
 
   useEffect(() => {
     setSaved(false);
@@ -178,18 +222,15 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
     if (found) focusNode(found);
   };
 
-  const exportImage = async () => {
+  const renderPng = useCallback(async (exportNodes: IdeaNode[]) => {
     const viewport = wrapperRef.current?.querySelector<HTMLElement>('.react-flow__viewport');
-    if (!viewport || nodes.length === 0 || exportingRef.current) return;
+    if (!viewport || exportNodes.length === 0) throw new Error('A teia não possui nós para exportar.');
 
-    exportingRef.current = true;
-    setExporting(true);
-    setExportError('');
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     const restoreEdgeStyles = prepareEdgesForExport(viewport);
-    let objectUrl = '';
 
     try {
-      const bounds = getNodesBounds(nodes);
+      const bounds = getNodesBounds(exportNodes);
       const exportViewport = getViewportForBounds(
         bounds,
         EXPORT_WIDTH,
@@ -215,21 +256,89 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
           '--xy-edge-stroke-width': EXPORT_EDGE_WIDTH,
         } as Partial<CSSStyleDeclaration>,
       });
-      const blob = await (await fetch(dataUrl)).blob();
-      objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.download = exportFilename(weave.name);
-      anchor.href = objectUrl;
-      anchor.style.display = 'none';
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
+      return (await fetch(dataUrl)).blob();
+    } finally {
+      restoreEdgeStyles();
+    }
+  }, [getNodesBounds]);
+
+  const preparePng = useCallback((blob: Blob, signature: string) => {
+    const previous = preparedPngRef.current;
+    const prepared = {
+      signature,
+      filename: exportFilename(weave.name),
+      url: URL.createObjectURL(blob),
+    };
+    preparedPngRef.current = prepared;
+    setPreparedSignature(signature);
+    if (previous) URL.revokeObjectURL(previous.url);
+    return prepared;
+  }, [weave.name]);
+
+  useEffect(() => {
+    const prepared = preparedPngRef.current;
+    if (!prepared || prepared.signature === currentExportSignature || exporting) {
+      setRefreshingExport(false);
+      return;
+    }
+
+    setRefreshingExport(true);
+    const generation = ++exportGenerationRef.current;
+    const exportNodes = nodes;
+    const timer = window.setTimeout(async () => {
+      try {
+        const blob = await renderPng(exportNodes);
+        if (
+          exportGenerationRef.current === generation
+          && currentExportSignatureRef.current === currentExportSignature
+        ) {
+          preparePng(blob, currentExportSignature);
+          setExportError('');
+        }
+      } catch (error) {
+        if (exportGenerationRef.current === generation) {
+          console.error('Falha ao atualizar PNG', error);
+          setExportError('Não foi possível atualizar o PNG. Tente novamente.');
+        }
+      } finally {
+        if (exportGenerationRef.current === generation) setRefreshingExport(false);
+      }
+    }, 220);
+
+    return () => {
+      window.clearTimeout(timer);
+      if (exportGenerationRef.current === generation) exportGenerationRef.current += 1;
+    };
+  }, [currentExportSignature, exporting, nodes, preparePng, preparedSignature, renderPng]);
+
+  useEffect(() => () => {
+    exportGenerationRef.current += 1;
+    if (preparedPngRef.current) URL.revokeObjectURL(preparedPngRef.current.url);
+  }, []);
+
+  const exportImage = async () => {
+    if (nodes.length === 0 || exportingRef.current || refreshingExport) return;
+
+    const prepared = preparedPngRef.current;
+    if (prepared?.signature === currentExportSignature) {
+      downloadPreparedPng(prepared);
+      return;
+    }
+
+    exportGenerationRef.current += 1;
+    exportingRef.current = true;
+    setExporting(true);
+    setExportError('');
+
+    try {
+      const signature = currentExportSignature;
+      const blob = await renderPng(nodes);
+      const png = preparePng(blob, signature);
+      downloadPreparedPng(png);
     } catch (error) {
       console.error('Falha ao exportar PNG', error);
       setExportError('Não foi possível gerar o PNG. Tente novamente.');
     } finally {
-      restoreEdgeStyles();
-      if (objectUrl) window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       exportingRef.current = false;
       setExporting(false);
     }
@@ -252,7 +361,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
         <div className="canvas-actions">
           <span className={`save-state${saved ? ' saved' : ''}`}><Check size={12} /> {saved ? 'Salvo' : 'Salvando'}</span>
           <button className="toolbar-button" type="button" onClick={() => downloadJson(`${weave.name}.json`, weave)}><Download size={15} /> JSON</button>
-          <button className="toolbar-button" type="button" onClick={exportImage} disabled={exporting}><ImageDown size={15} /> {exporting ? 'Gerando…' : 'PNG'}</button>
+          <button className="toolbar-button" type="button" onClick={exportImage} disabled={exporting || refreshingExport}><ImageDown size={15} /> {exporting ? 'Gerando…' : refreshingExport ? 'Atualizando…' : 'PNG'}</button>
         </div>
       </header>
 
