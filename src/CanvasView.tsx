@@ -8,6 +8,8 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
+  getNodesBounds,
+  getViewportForBounds,
   MarkerType,
   useReactFlow,
   type Connection,
@@ -26,6 +28,49 @@ import { STATUS_META, TYPE_META, type IdeaNode, type IdeaNodeData, type IdeaStat
 
 const nodeTypes = { idea: IdeaNodeCard };
 const colors = ['#8ea8e8', '#f2c46d', '#c69cf2', '#ef947a', '#7dc7b4', '#a5abb3', '#ef7a7a'];
+const EXPORT_WIDTH = 1920;
+const EXPORT_HEIGHT = 1080;
+const EXPORT_EDGE_COLOR = '#66727e';
+const EXPORT_EDGE_WIDTH = '1.6';
+
+interface ExportStyleSnapshot {
+  element: SVGElement;
+  stroke: string;
+  strokeWidth: string;
+  fill: string;
+}
+
+function prepareEdgesForExport(viewport: HTMLElement) {
+  const elements = viewport.querySelectorAll<SVGElement>(
+    '.react-flow__edge-path, marker path, marker polygon, marker polyline',
+  );
+  const snapshots: ExportStyleSnapshot[] = [];
+
+  elements.forEach((element) => {
+    snapshots.push({
+      element,
+      stroke: element.style.stroke,
+      strokeWidth: element.style.strokeWidth,
+      fill: element.style.fill,
+    });
+
+    if (element.classList.contains('react-flow__edge-path')) {
+      element.style.stroke = EXPORT_EDGE_COLOR;
+      element.style.strokeWidth = EXPORT_EDGE_WIDTH;
+    } else {
+      element.style.stroke = EXPORT_EDGE_COLOR;
+      element.style.fill = EXPORT_EDGE_COLOR;
+    }
+  });
+
+  return () => {
+    snapshots.forEach(({ element, stroke, strokeWidth, fill }) => {
+      element.style.stroke = stroke;
+      element.style.strokeWidth = strokeWidth;
+      element.style.fill = fill;
+    });
+  };
+}
 
 interface Props {
   weave: Weave;
@@ -39,6 +84,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
   const [snap, setSnap] = useState(weave.snapToGrid);
   const [query, setQuery] = useState('');
   const [saved, setSaved] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView, setCenter } = useReactFlow<IdeaNode, Edge>();
   const selectedNode = nodes.find((node) => node.selected);
@@ -127,12 +173,46 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
 
   const exportImage = async () => {
     const viewport = wrapperRef.current?.querySelector<HTMLElement>('.react-flow__viewport');
-    if (!viewport) return;
-    const dataUrl = await toPng(viewport, { backgroundColor: '#0d1014', pixelRatio: 2, cacheBust: true });
-    const anchor = document.createElement('a');
-    anchor.download = `${weave.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`;
-    anchor.href = dataUrl;
-    anchor.click();
+    if (!viewport || nodes.length === 0 || exporting) return;
+
+    setExporting(true);
+    const restoreEdgeStyles = prepareEdgesForExport(viewport);
+
+    try {
+      const bounds = getNodesBounds(nodes);
+      const exportViewport = getViewportForBounds(
+        bounds,
+        EXPORT_WIDTH,
+        EXPORT_HEIGHT,
+        0.1,
+        2,
+        0.12,
+      );
+      const dataUrl = await toPng(viewport, {
+        backgroundColor: '#0d1014',
+        width: EXPORT_WIDTH,
+        height: EXPORT_HEIGHT,
+        pixelRatio: 2,
+        cacheBust: true,
+        style: {
+          width: `${EXPORT_WIDTH}px`,
+          height: `${EXPORT_HEIGHT}px`,
+          transform: `translate(${exportViewport.x}px, ${exportViewport.y}px) scale(${exportViewport.zoom})`,
+          transformOrigin: 'top left',
+          '--xy-edge-stroke': EXPORT_EDGE_COLOR,
+          '--xy-edge-stroke-default': EXPORT_EDGE_COLOR,
+          '--xy-edge-stroke-selected': '#f2c46d',
+          '--xy-edge-stroke-width': EXPORT_EDGE_WIDTH,
+        } as Partial<CSSStyleDeclaration>,
+      });
+      const anchor = document.createElement('a');
+      anchor.download = `${weave.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`;
+      anchor.href = dataUrl;
+      anchor.click();
+    } finally {
+      restoreEdgeStyles();
+      setExporting(false);
+    }
   };
 
   const minimapColor = useCallback((node: IdeaNode) => node.data.color, []);
@@ -152,7 +232,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
         <div className="canvas-actions">
           <span className={`save-state${saved ? ' saved' : ''}`}><Check size={12} /> {saved ? 'Salvo' : 'Salvando'}</span>
           <button className="toolbar-button" type="button" onClick={() => downloadJson(`${weave.name}.json`, weave)}><Download size={15} /> JSON</button>
-          <button className="toolbar-button" type="button" onClick={exportImage}><ImageDown size={15} /> PNG</button>
+          <button className="toolbar-button" type="button" onClick={exportImage} disabled={exporting}><ImageDown size={15} /> {exporting ? 'Gerando…' : 'PNG'}</button>
         </div>
       </header>
 

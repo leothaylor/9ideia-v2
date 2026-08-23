@@ -79,6 +79,7 @@ h1 { margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: 1; letter-spacin
 .save-state.saved { color: #719c91; }
 .toolbar-button { border: 1px solid #2b323a; background: #15191e; color: #9ca3ab; border-radius: 8px; padding: 8px 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; }
 .toolbar-button:hover { color: #f0ede7; border-color: #454e58; }
+.toolbar-button:disabled { cursor: wait; opacity: .55; }
 .canvas-body { height: calc(100vh - 64px); display: grid; grid-template-columns: 154px minmax(0, 1fr) 300px; }
 .node-palette { z-index: 20; border-right: 1px solid #242a31; background: #101318; padding: 17px 10px; }
 .node-palette > p { margin: 0 9px 12px; color: #565f69; text-transform: uppercase; letter-spacing: .12em; font-family: 'DM Mono', monospace; font-size: 9px; }
