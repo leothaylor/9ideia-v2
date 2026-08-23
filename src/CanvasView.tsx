@@ -8,7 +8,6 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
-  getNodesBounds,
   getViewportForBounds,
   MarkerType,
   useReactFlow,
@@ -86,7 +85,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
   const [saved, setSaved] = useState(true);
   const [exporting, setExporting] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, fitView, setCenter } = useReactFlow<IdeaNode, Edge>();
+  const { screenToFlowPosition, fitView, setCenter, getNodesBounds } = useReactFlow<IdeaNode, Edge>();
   const selectedNode = nodes.find((node) => node.selected);
 
   useEffect(() => {
