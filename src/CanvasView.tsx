@@ -32,6 +32,12 @@ const EXPORT_HEIGHT = 1080;
 const EXPORT_EDGE_COLOR = '#66727e';
 const EXPORT_EDGE_WIDTH = '1.6';
 
+function exportFilename(name: string) {
+  const slug = name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'teia';
+  const timestamp = new Date().toISOString().slice(0, 19).replace('T', '-').replace(/:/g, '');
+  return `${slug}-${timestamp}.png`;
+}
+
 interface ExportStyleSnapshot {
   element: SVGElement;
   stroke: string;
@@ -84,6 +90,8 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
   const [query, setQuery] = useState('');
   const [saved, setSaved] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const exportingRef = useRef(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView, setCenter, getNodesBounds } = useReactFlow<IdeaNode, Edge>();
   const selectedNode = nodes.find((node) => node.selected);
@@ -172,10 +180,13 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
 
   const exportImage = async () => {
     const viewport = wrapperRef.current?.querySelector<HTMLElement>('.react-flow__viewport');
-    if (!viewport || nodes.length === 0 || exporting) return;
+    if (!viewport || nodes.length === 0 || exportingRef.current) return;
 
+    exportingRef.current = true;
     setExporting(true);
+    setExportError('');
     const restoreEdgeStyles = prepareEdgesForExport(viewport);
+    let objectUrl = '';
 
     try {
       const bounds = getNodesBounds(nodes);
@@ -204,12 +215,22 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
           '--xy-edge-stroke-width': EXPORT_EDGE_WIDTH,
         } as Partial<CSSStyleDeclaration>,
       });
+      const blob = await (await fetch(dataUrl)).blob();
+      objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
-      anchor.download = `${weave.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`;
-      anchor.href = dataUrl;
+      anchor.download = exportFilename(weave.name);
+      anchor.href = objectUrl;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
       anchor.click();
+      anchor.remove();
+    } catch (error) {
+      console.error('Falha ao exportar PNG', error);
+      setExportError('Não foi possível gerar o PNG. Tente novamente.');
     } finally {
       restoreEdgeStyles();
+      if (objectUrl) window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      exportingRef.current = false;
       setExporting(false);
     }
   };
@@ -271,6 +292,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
             <Background color="#2a3037" gap={24} size={1} variant={BackgroundVariant.Dots} />
             <MiniMap nodeColor={minimapColor} maskColor="rgba(8,10,12,.72)" pannable zoomable />
           </ReactFlow>
+          {exportError && <div className="canvas-export-error" role="alert">{exportError}</div>}
           <div className="canvas-hint"><span>N</span> novo nó <i /> duplo clique cria <i /> arraste os pontos para conectar <i /> <span>Shift</span> multisseleção</div>
         </div>
 

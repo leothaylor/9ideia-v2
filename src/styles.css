@@ -18,9 +18,10 @@ h1 { margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: 1; letter-spacin
 .primary-button { border: 0; background: #f2c46d; color: #17130b; border-radius: 11px; padding: 12px 17px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 28px rgba(242,196,109,.12); }
 .weave-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .weave-card, .new-weave-card { min-height: 235px; border-radius: 16px; }
-.weave-card { --accent: #f2c46d; position: relative; border: 1px solid #262b31; background: linear-gradient(145deg, rgba(255,255,255,.025), transparent 45%), #121519; padding: 21px; display: flex; flex-direction: column; transition: transform .2s ease, border-color .2s ease, background .2s ease; overflow: hidden; }
+.weave-card { --accent: #f2c46d; position: relative; border: 1px solid #262b31; background: linear-gradient(145deg, rgba(255,255,255,.025), transparent 45%), #121519; padding: 21px; display: flex; flex-direction: column; transition: transform .2s ease, border-color .2s ease, background .2s ease; overflow: hidden; cursor: pointer; }
 .weave-card::before { content: ''; position: absolute; inset: 0 auto auto 0; width: 100%; height: 2px; background: linear-gradient(90deg, var(--accent), transparent 70%); opacity: .75; }
 .weave-card:hover { transform: translateY(-3px); border-color: #3b424b; background-color: #15191e; }
+.weave-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .card-topline { display: flex; justify-content: space-between; align-items: start; }
 .weave-glyph { position: relative; width: 52px; height: 46px; }
 .weave-glyph::before, .weave-glyph::after { content: ''; position: absolute; background: color-mix(in srgb, var(--accent) 50%, #2d333a); height: 1px; transform-origin: left; }
@@ -93,6 +94,7 @@ h1 { margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: 1; letter-spacin
 .react-flow__edge.selected .react-flow__edge-path { stroke-width: 2; }
 .react-flow__minimap { width: 132px; height: 86px; right: 14px; bottom: 28px; border: 1px solid #2a3138; border-radius: 9px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
 .canvas-hint { position: absolute; z-index: 10; bottom: 11px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; white-space: nowrap; color: #505964; font-family: 'DM Mono', monospace; font-size: 8px; pointer-events: none; }
+.canvas-export-error { position: absolute; z-index: 15; top: 14px; left: 50%; transform: translateX(-50%); border: 1px solid #6c3b3b; background: #251719; color: #ef9b9b; border-radius: 9px; padding: 9px 13px; font-size: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
 .canvas-hint span { padding: 2px 5px; border: 1px solid #303841; border-radius: 4px; color: #747e88; }
 .canvas-hint i { width: 2px; height: 2px; background: #39414a; border-radius: 50%; }
 

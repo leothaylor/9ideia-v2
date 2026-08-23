@@ -97,7 +97,21 @@ export default function App() {
             {data.weaves.map((weave) => {
               const accent = weave.nodes[0]?.data.color ?? '#f2c46d';
               return (
-                <article className="weave-card" key={weave.id} style={{ '--accent': accent } as React.CSSProperties} onDoubleClick={() => setActiveId(weave.id)}>
+                <article
+                  className="weave-card"
+                  key={weave.id}
+                  style={{ '--accent': accent } as React.CSSProperties}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Abrir teia ${weave.name}`}
+                  onClick={() => setActiveId(weave.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setActiveId(weave.id);
+                    }
+                  }}
+                >
                   <div className="card-topline">
                     <span className="weave-glyph"><i /><i /><i /><i /></span>
                     <div className="card-menu-wrap">
@@ -113,7 +127,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className="card-copy"><h2>{weave.name}</h2><p>{weave.nodes.length} {weave.nodes.length === 1 ? 'nó' : 'nós'} · Editada {relativeDate(weave.updatedAt)}</p></div>
-                  <button className="open-button" type="button" onClick={() => setActiveId(weave.id)}>Abrir teia <ArrowUpRight size={15} /></button>
+                  <span className="open-button" aria-hidden="true">Abrir teia <ArrowUpRight size={15} /></span>
                 </article>
               );
             })}
