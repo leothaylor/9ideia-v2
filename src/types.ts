@@ -33,11 +33,11 @@ export interface AppData {
 }
 
 export const TYPE_META: Record<IdeaType, { label: string; color: string }> = {
-  ideia: { label: 'Ideia', color: '#8ea8e8' },
+  ideia: { label: 'Início', color: '#8ea8e8' },
   acao: { label: 'Ação', color: '#f2c46d' },
-  decisao: { label: 'Decisão', color: '#c69cf2' },
-  experimento: { label: 'Experimento', color: '#ef947a' },
-  resultado: { label: 'Resultado', color: '#7dc7b4' },
+  decisao: { label: 'Posição', color: '#c69cf2' },
+  experimento: { label: 'Reação', color: '#ef947a' },
+  resultado: { label: 'Finalização', color: '#7dc7b4' },
   nota: { label: 'Nota', color: '#a5abb3' },
 };
 

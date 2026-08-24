@@ -24,7 +24,7 @@ export function createNode(title: string, type: IdeaType, x: number, y: number):
 
 export function createWeave(name: string): Weave {
   const timestamp = now();
-  const starter = createNode('Ideia central', 'ideia', 0, 0);
+  const starter = createNode('Início da luta', 'ideia', 0, 0);
   return { id: newId(), name, createdAt: timestamp, updatedAt: timestamp, nodes: [starter], edges: [], snapToGrid: false };
 }
 

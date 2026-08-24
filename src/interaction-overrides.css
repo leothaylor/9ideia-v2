@@ -1,0 +1,29 @@
+/* Interaction refinements for tactical flow editing */
+.react-flow__node {
+  will-change: transform;
+}
+
+.react-flow__node.dragging .idea-node {
+  transition: none !important;
+}
+
+.node-handle {
+  width: 13px !important;
+  height: 13px !important;
+  border-width: 2px !important;
+  opacity: .78;
+  cursor: crosshair;
+}
+
+.node-handle::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+}
+
+.idea-node:hover .node-handle,
+.idea-node.is-selected .node-handle {
+  opacity: 1;
+  transform: scale(1.08);
+}

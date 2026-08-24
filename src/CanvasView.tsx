@@ -145,7 +145,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
     const timer = window.setTimeout(() => {
       onChange({ ...weave, nodes, edges, snapToGrid: snap, updatedAt: new Date().toISOString() });
       setSaved(true);
-    }, 180);
+    }, 320);
     return () => window.clearTimeout(timer);
   }, [nodes, edges, snap]);
 
@@ -167,7 +167,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
       x: clientX ?? (rect ? rect.left + rect.width / 2 : window.innerWidth / 2),
       y: clientY ?? (rect ? rect.top + rect.height / 2 : window.innerHeight / 2),
     });
-    const node = createNode(`Nova ${TYPE_META[type].label.toLowerCase()}`, type, point.x - 105, point.y - 55);
+    const node = createNode(TYPE_META[type].label, type, point.x - 105, point.y - 55);
     node.selected = true;
     setNodes((current) => [...current.map((item) => ({ ...item, selected: false })), node]);
   }, [screenToFlowPosition]);
@@ -176,7 +176,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (target.matches('input, textarea, select') || target.isContentEditable) return;
-      if (event.key.toLowerCase() === 'n') addNode('ideia');
+      if (event.key.toLowerCase() === 'n') addNode('acao');
       if (event.key.toLowerCase() === 'f') fitView({ padding: .25, duration: 450 });
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') event.preventDefault();
     };
@@ -386,7 +386,8 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onPaneClick={(event) => { if (event.detail === 2) addNode('ideia', event.clientX, event.clientY); }}
+            onPaneClick={(event) => { if (event.detail === 2) addNode('acao', event.clientX, event.clientY); }}
+            nodeDragThreshold={0}
             snapToGrid={snap}
             snapGrid={[20, 20]}
             minZoom={.18}
@@ -402,7 +403,7 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
             <MiniMap nodeColor={minimapColor} maskColor="rgba(8,10,12,.72)" pannable zoomable />
           </ReactFlow>
           {exportError && <div className="canvas-export-error" role="alert">{exportError}</div>}
-          <div className="canvas-hint"><span>N</span> novo nó <i /> duplo clique cria <i /> arraste os pontos para conectar <i /> <span>Shift</span> multisseleção</div>
+          <div className="canvas-hint"><span>N</span> nova ação <i /> duplo clique cria ação <i /> arraste os pontos para conectar <i /> <span>Shift</span> multisseleção</div>
         </div>
 
         <aside className={`inspector${selectedNode ? ' has-selection' : ''}`}>
@@ -411,13 +412,13 @@ function CanvasInner({ weave, onBack, onChange }: Props) {
               <header><div><p>Propriedades</p><strong>Editar nó</strong></div><button className="toolbar-icon" type="button" onClick={() => setNodes((current) => current.map((node) => ({ ...node, selected: false })))} aria-label="Fechar painel"><X size={16} /></button></header>
               <div className="inspector-scroll">
                 <label>Título<input value={selectedNode.data.title} onChange={(event) => updateSelected({ title: event.target.value })} /></label>
-                <label>Descrição<textarea rows={4} value={selectedNode.data.description} onChange={(event) => updateSelected({ description: event.target.value })} placeholder="Contexto, hipótese ou próximo passo…" /></label>
+                <label>Descrição<textarea rows={4} value={selectedNode.data.description} onChange={(event) => updateSelected({ description: event.target.value })} placeholder="Reação, detalhe técnico ou próximo passo…" /></label>
                 <div className="field-row">
                   <label>Tipo<select value={selectedNode.data.type} onChange={(event) => { const type = event.target.value as IdeaType; updateSelected({ type, color: TYPE_META[type].color }); }}>{(Object.keys(TYPE_META) as IdeaType[]).map((type) => <option value={type} key={type}>{TYPE_META[type].label}</option>)}</select></label>
                   <label>Status<select value={selectedNode.data.status} onChange={(event) => updateSelected({ status: event.target.value as IdeaStatus })}>{(Object.keys(STATUS_META) as IdeaStatus[]).map((status) => <option value={status} key={status}>{STATUS_META[status].label}</option>)}</select></label>
                 </div>
                 <fieldset><legend>Cor</legend><div className="color-options">{colors.map((color) => <button key={color} type="button" onClick={() => updateSelected({ color })} className={selectedNode.data.color === color ? 'selected' : ''} style={{ background: color }} aria-label={`Usar cor ${color}`} />)}</div></fieldset>
-                <label>Tags<input value={selectedNode.data.tags.join(', ')} onChange={(event) => updateSelected({ tags: event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="vendas, urgente, pesquisa" /></label>
+                <label>Tags<input value={selectedNode.data.tags.join(', ')} onChange={(event) => updateSelected({ tags: event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean) })} placeholder="guarda, passagem, montada" /></label>
                 <label>Link<div className="input-with-icon"><Link2 size={14} /><input type="url" value={selectedNode.data.url} onChange={(event) => updateSelected({ url: event.target.value })} placeholder="https://…" /></div></label>
                 {selectedNode.data.url && <a className="visit-link" href={selectedNode.data.url} target="_blank" rel="noreferrer">Abrir link <ExternalLink size={13} /></a>}
               </div>
