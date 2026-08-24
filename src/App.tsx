@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Copy, Download, Ellipsis, FileUp, Network, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { CanvasView } from './CanvasView';
-import { createWeave, downloadJson, duplicateWeave, loadData, saveData } from './storage';
+import { createWeave, downloadJson, duplicateWeave, importWeaves, loadData, saveData } from './storage';
 import type { AppData, Weave } from './types';
 
 type DialogState = { kind: 'create'; name: string } | { kind: 'rename'; id: string; name: string } | { kind: 'delete'; id: string; name: string } | null;
@@ -60,10 +60,8 @@ export default function App() {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      const parsed = JSON.parse(await file.text()) as AppData | Weave;
-      const incoming = 'version' in parsed && parsed.version === 2 ? parsed.weaves : [parsed as Weave];
-      if (!incoming.length || incoming.some((weave) => !weave.name || !Array.isArray(weave.nodes) || !Array.isArray(weave.edges))) throw new Error('Arquivo inválido');
-      const copies = incoming.map((weave) => ({ ...duplicateWeave(weave), name: `${weave.name} — importada` }));
+      const parsed = JSON.parse(await file.text()) as unknown;
+      const copies = importWeaves(parsed);
       setData((current) => ({ ...current, weaves: [...copies, ...current.weaves] }));
       setNotice(`${copies.length} ${copies.length === 1 ? 'teia importada' : 'teias importadas'}.`);
     } catch {
